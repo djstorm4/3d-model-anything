@@ -756,15 +756,36 @@ final class CoverageEngine: @unchecked Sendable {
       let t = obj.transform, d = obj.dimensions
       let x = simd_make_float3(t.columns.0), y = simd_make_float3(t.columns.1), z = simd_make_float3(t.columns.2)
       let c = simd_make_float3(t.columns.3)
+
       // top + four sides
-      for (off, n, w, h, ax, ay) in [
-        (y * d.y / 2, y, d.x, d.z, x, z),
-        (z * d.z / 2, z, d.x, d.y, x, y), (-z * d.z / 2, -z, d.x, d.y, x, y),
-        (x * d.x / 2, x, d.z, d.y, z, y), (-x * d.x / 2, -x, d.z, d.y, z, y),
-      ] {
+      typealias Face = (
+        offset: SIMD3<Float>,
+        normal: SIMD3<Float>,
+        width: Float,
+        height: Float,
+        axisX: SIMD3<Float>,
+        axisY: SIMD3<Float>
+      )
+
+      let halfX: Float = d.x / 2
+      let halfY: Float = d.y / 2
+      let halfZ: Float = d.z / 2
+
+      let faces: [Face] = [
+        (y * halfY, y, d.x, d.z, x, z),
+        (z * halfZ, z, d.x, d.y, x, y),
+        (-z * halfZ, -z, d.x, d.y, x, y),
+        (x * halfX, x, d.z, d.y, z, y),
+        (-x * halfX, -x, d.z, d.y, z, y)
+      ]
+
+      for face in faces {
         var m = matrix_identity_float4x4
-        m.columns.0 = SIMD4(ax, 0); m.columns.1 = SIMD4(ay, 0); m.columns.2 = SIMD4(n, 0); m.columns.3 = SIMD4(c + off, 1)
-        surface(m, w, h, n)
+        m.columns.0 = SIMD4<Float>(face.axisX, 0)
+        m.columns.1 = SIMD4<Float>(face.axisY, 0)
+        m.columns.2 = SIMD4<Float>(face.normal, 0)
+        m.columns.3 = SIMD4<Float>(c + face.offset, 1)
+        surface(m, face.width, face.height, face.normal)
       }
     }
     return out
